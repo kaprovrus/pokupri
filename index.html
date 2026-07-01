@@ -374,27 +374,7 @@
       background: #2d3a5f;
       color: #93b4f8;
     }
-    .archived-link {
-      text-align: right;
-      margin: 10px 0;
-    }
-    .archived-link a {
-      color: #3b82f6;
-      font-weight: 500;
-      text-decoration: none;
-    }
-    body.dark .archived-link a {
-      color: #93b4f8;
-    }
-    /* Адаптив */
-    @media (max-width: 600px) {
-      .add-form { flex-direction: column; }
-      .item-card { flex-wrap: wrap; }
-      .item-card .price-input { width: 100%; }
-      .header { flex-direction: column; align-items: stretch; }
-      .header-actions { justify-content: center; }
-    }
-    /* Архив страница */
+    /* Архив */
     .page-archive {
       display: none;
     }
@@ -454,6 +434,13 @@
     body.dark #statusMessage {
       background: #334155;
     }
+    @media (max-width: 600px) {
+      .add-form { flex-direction: column; }
+      .item-card { flex-wrap: wrap; }
+      .item-card .price-input { width: 100%; }
+      .header { flex-direction: column; align-items: stretch; }
+      .header-actions { justify-content: center; }
+    }
   </style>
 </head>
 <body>
@@ -466,7 +453,7 @@
     <h1><i class="fas fa-list-check"></i> Список покупок</h1>
     <div class="header-actions">
       <button class="btn btn-success" id="saveBtn"><i class="fas fa-save"></i> Сохранить</button>
-      <button class="btn btn-sync" id="syncBtn"><i class="fas fa-sync"></i> Синхр.</button>
+      <button class="btn btn-sync" id="syncBtn"><i class="fas fa-sync"></i> Восстановить</button>
       <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i> <span id="themeLabel">Тёмная</span></button>
     </div>
   </div>
@@ -539,11 +526,9 @@
 
 <script>
 // ============================================================
-// ПОЛНЫЙ КОД С ИНТЕГРАЦИЕЙ ВАШЕГО GOOGLE APPS SCRIPT
+// ПОЛНЫЙ КОД С ЛОКАЛЬНЫМ ХРАНЕНИЕМ (localStorage)
+// БЕЗ CORS-ПРОБЛЕМ, РАБОТАЕТ НА GITHUB PAGES
 // ============================================================
-
-// === НАСТРОЙКИ ===
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyxnw5i9l4KxoSfb4lIthj2kQpj3aJZ-M4c6Xze-gYB-v9Mt2Flt4OZmzKb8kAIL-Zk/exec';
 
 // === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
 let items = [];
@@ -551,8 +536,7 @@ let archiveData = [];
 let currentFilter = 'all';
 let searchQuery = '';
 let sortMode = 'date';
-let isSaving = false;
-let isLoading = false;
+let autoSaveTimer = null;
 
 // === DOM ЭЛЕМЕНТЫ ===
 const itemListEl = document.getElementById('itemList');
@@ -567,10 +551,9 @@ const statsBought = document.getElementById('boughtCount');
 const statsRemain = document.getElementById('remainCount');
 const statsPrice = document.getElementById('totalPrice');
 const statusEl = document.getElementById('statusMessage');
+const archiveContent = document.getElementById('archiveContent');
 
-// === РАБОТА С GOOGLE APPS SCRIPT ===
-
-// Показать статус
+// === СТАТУС ===
 function showStatus(message, isError = false) {
   statusEl.textContent = message;
   statusEl.style.display = 'block';
@@ -581,140 +564,161 @@ function showStatus(message, isError = false) {
   clearTimeout(statusEl._timeout);
   statusEl._timeout = setTimeout(() => {
     statusEl.style.display = 'none';
-  }, 3000);
+  }, 2500);
 }
 
-// Загрузить данные из Google Таблицы
-async function loadFromServer() {
-  if (isLoading) return;
-  isLoading = true;
-  showStatus('🔄 Загрузка данных...');
+// === РАБОТА С LOCALSTORAGE ===
 
-  try {
-    const response = await fetch(SCRIPT_URL + '?action=getItems');
-    const data = await response.json();
-
-    if (data.items) {
-      items = data.items.map(item => ({
-        ...item,
-        bought: item.bought === true || item.bought === 'true',
-        price: parseFloat(item.price) || 0,
-        createdAt: parseInt(item.createdAt) || Date.now()
-      }));
-    }
-
-    if (data.archive) {
-      archiveData = data.archive.map(item => ({
-        ...item,
-        price: parseFloat(item.price) || 0,
-        total: parseFloat(item.total) || 0,
-        archivedAt: parseInt(item.archivedAt) || Date.now()
-      }));
-    }
-
-    // Сохраняем локально
-    saveToLocalStorage();
-    renderAll();
-    showStatus('✅ Данные загружены');
-  } catch (error) {
-    console.error('Ошибка загрузки:', error);
-    showStatus('⚠️ Ошибка загрузки, используем локальные данные', true);
-    loadFromLocalStorage();
-  } finally {
-    isLoading = false;
-  }
-}
-
-// Сохранить данные в Google Таблицу
-async function saveToServer() {
-  if (isSaving) return;
-  isSaving = true;
-  showStatus('💾 Сохранение...');
-
-  try {
-    const payload = {
-      action: 'saveAll',
-      items: items.map(item => ({
-        id: item.id,
-        name: item.name,
-        qty: item.qty,
-        bought: item.bought,
-        price: item.price || 0,
-        createdAt: item.createdAt || Date.now(),
-        category: item.category || ''
-      })),
-      archive: archiveData.map(item => ({
-        archivedAt: item.archivedAt || Date.now(),
-        name: item.name,
-        qty: item.qty,
-        price: item.price || 0,
-        total: item.total || item.price || 0
-      }))
-    };
-
-    const response = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    const result = await response.json();
-    if (result.success) {
-      showStatus('✅ Сохранено успешно!');
-      saveToLocalStorage();
-    } else {
-      showStatus('⚠️ Ошибка: ' + (result.error || 'неизвестная'), true);
-    }
-  } catch (error) {
-    console.error('Ошибка сохранения:', error);
-    showStatus('⚠️ Ошибка сохранения, сохранено локально', true);
-    saveToLocalStorage();
-  } finally {
-    isSaving = false;
-  }
-}
-
-// === ЛОКАЛЬНОЕ ХРАНЕНИЕ (резерв) ===
-
+// Сохранение
 function saveToLocalStorage() {
   try {
-    localStorage.setItem('shoppingItems', JSON.stringify(items));
-    localStorage.setItem('shoppingArchive', JSON.stringify(archiveData));
-    localStorage.setItem('lastSave', new Date().toISOString());
+    const data = {
+      items: items,
+      archive: archiveData,
+      lastSave: new Date().toISOString()
+    };
+    localStorage.setItem('shoppingList', JSON.stringify(data));
+    showStatus('💾 Сохранено в браузере');
   } catch (e) {
-    console.error('Ошибка локального сохранения:', e);
+    console.error('Ошибка сохранения:', e);
+    showStatus('⚠️ Ошибка сохранения', true);
   }
 }
 
+// Загрузка
 function loadFromLocalStorage() {
   try {
-    const savedItems = localStorage.getItem('shoppingItems');
-    const savedArchive = localStorage.getItem('shoppingArchive');
-
-    if (savedItems) {
-      items = JSON.parse(savedItems);
-    }
-    if (savedArchive) {
-      archiveData = JSON.parse(savedArchive);
-    }
-    renderAll();
-    showStatus('📂 Загружено из кэша');
-  } catch (e) {
-    console.error('Ошибка загрузки из кэша:', e);
-    // Если ничего нет, создаём тестовые данные
-    if (items.length === 0) {
+    const saved = localStorage.getItem('shoppingList');
+    if (saved) {
+      const data = JSON.parse(saved);
+      items = data.items || [];
+      archiveData = data.archive || [];
+      renderAll();
+      showStatus('📂 Загружено из браузера (' + items.length + ' товаров)');
+    } else {
+      // Тестовые данные при первом запуске
       items = [
         { id: '1', name: 'Молоко', qty: '2 л', category: 'Молочное', bought: false, price: 0, createdAt: Date.now() - 200000 },
         { id: '2', name: 'Хлеб', qty: '1 шт', category: 'Выпечка', bought: false, price: 0, createdAt: Date.now() - 100000 },
+        { id: '3', name: 'Яблоки', qty: '1 кг', category: 'Фрукты', bought: false, price: 0, createdAt: Date.now() - 50000 }
       ];
+      archiveData = [];
+      renderAll();
+      saveToLocalStorage();
+      showStatus('📝 Созданы примеры товаров');
     }
+  } catch (e) {
+    console.error('Ошибка загрузки:', e);
+    showStatus('⚠️ Ошибка загрузки', true);
+    // Создаём пустой список
+    items = [];
+    archiveData = [];
     renderAll();
   }
 }
 
 // === ОСНОВНЫЕ ФУНКЦИИ ===
 
-// Рендер активного списка
+// Добавление товара
+function addItem(e) {
+  e.preventDefault();
+  const name = nameInput.value.trim();
+  const qty = qtyInput.value.trim() || '1';
+  const category = catInput.value.trim() || 'Основное';
+  
+  if (!name) {
+    showStatus('⚠️ Введите название товара', true);
+    return;
+  }
+
+  const newItem = {
+    id: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+    name,
+    qty,
+    category,
+    bought: false,
+    price: 0,
+    createdAt: Date.now()
+  };
+
+  items.push(newItem);
+  nameInput.value = '';
+  qtyInput.value = '1';
+  catInput.value = 'Основное';
+  
+  renderAll();
+  saveToLocalStorage();
+  showStatus('✅ Товар добавлен: ' + name);
+}
+
+// Удаление товара
+function deleteItem(id) {
+  if (!confirm('Удалить товар?')) return;
+  const item = items.find(i => i.id === id);
+  items = items.filter(i => i.id !== id);
+  renderAll();
+  saveToLocalStorage();
+  if (item) showStatus('🗑️ Удалено: ' + item.name);
+}
+
+// Переключение статуса "куплено"
+function toggleBought(id, priceInput) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  
+  item.bought = !item.bought;
+  const priceVal = parseFloat(priceInput.value);
+  if (!isNaN(priceVal) && priceVal >= 0) {
+    item.price = priceVal;
+  }
+  
+  renderAll();
+  autoSave();
+}
+
+// Изменение цены
+function updatePrice(id, value) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  const val = parseFloat(value);
+  if (!isNaN(val) && val >= 0) {
+    item.price = val;
+    updateStats();
+    autoSave();
+  }
+}
+
+// Архивация купленных
+function archiveBought() {
+  const boughtItems = items.filter(i => i.bought);
+  if (boughtItems.length === 0) {
+    showStatus('⚠️ Нет купленных товаров', true);
+    return;
+  }
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+
+  boughtItems.forEach(item => {
+    archiveData.push({
+      archivedAt: Date.now(),
+      name: item.name,
+      qty: item.qty,
+      price: item.price || 0,
+      total: item.price || 0,
+      date: dateStr
+    });
+  });
+
+  items = items.filter(i => !i.bought);
+  renderAll();
+  saveToLocalStorage();
+  showStatus('📦 Архивировано ' + boughtItems.length + ' товаров');
+}
+
+// === РЕНДЕРИНГ ===
+
+// Рендер списка товаров
 function renderItems() {
   let filtered = items.filter(item => {
     const matchSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -724,7 +728,7 @@ function renderItems() {
     return true;
   });
 
-  // сортировка
+  // Сортировка
   if (sortMode === 'name') {
     filtered.sort((a, b) => a.name.localeCompare(b.name));
   } else if (sortMode === 'price') {
@@ -754,7 +758,7 @@ function renderItems() {
   });
   itemListEl.innerHTML = html;
 
-  // обработчики событий на карточках
+  // Обработчики
   document.querySelectorAll('.item-card').forEach(card => {
     const id = card.dataset.id;
     const cb = card.querySelector('.checkbox');
@@ -762,44 +766,40 @@ function renderItems() {
     const delBtn = card.querySelector('.delete-btn');
 
     cb.addEventListener('change', function() {
-      const item = items.find(i => i.id === id);
-      if (item) {
-        item.bought = this.checked;
-        const priceVal = parseFloat(priceInput.value);
-        if (!isNaN(priceVal) && priceVal >= 0) item.price = priceVal;
-        renderAll();
-        autoSave();
-      }
+      toggleBought(id, priceInput);
     });
 
     priceInput.addEventListener('change', function() {
+      updatePrice(id, this.value);
+    });
+
+    priceInput.addEventListener('input', function() {
+      // Обновляем статистику в реальном времени
       const item = items.find(i => i.id === id);
       if (item) {
         const val = parseFloat(this.value);
-        if (!isNaN(val) && val >= 0) item.price = val;
-        updateStats();
-        autoSave();
+        if (!isNaN(val) && val >= 0) {
+          item.price = val;
+          updateStats();
+        }
       }
     });
 
     delBtn.addEventListener('click', function() {
-      if (confirm('Удалить товар?')) {
-        items = items.filter(i => i.id !== id);
-        renderAll();
-        autoSave();
-      }
+      deleteItem(id);
     });
   });
 
   updateStats();
 }
 
-// Обновить статистику
+// Обновление статистики
 function updateStats() {
   const total = items.length;
   const bought = items.filter(i => i.bought).length;
   const remain = total - bought;
   const totalPrice = items.reduce((acc, i) => acc + (i.bought ? (i.price || 0) : 0), 0);
+  
   statsTotal.textContent = total;
   statsBought.textContent = bought;
   statsRemain.textContent = remain;
@@ -851,70 +851,10 @@ function renderAll() {
   renderArchive();
 }
 
-// Автосохранение (с задержкой)
-let autoSaveTimer = null;
+// Автосохранение
 function autoSave() {
   clearTimeout(autoSaveTimer);
-  autoSaveTimer = setTimeout(() => {
-    saveToLocalStorage();
-    // Не отправляем на сервер автоматически, чтобы не перегружать
-  }, 500);
-}
-
-// Добавление товара
-function addItem(e) {
-  e.preventDefault();
-  const name = nameInput.value.trim();
-  const qty = qtyInput.value.trim() || '1';
-  const category = catInput.value.trim() || 'Основное';
-  if (!name) {
-    alert('Введите название товара');
-    return;
-  }
-  const newItem = {
-    id: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
-    name,
-    qty,
-    category,
-    bought: false,
-    price: 0,
-    createdAt: Date.now()
-  };
-  items.push(newItem);
-  nameInput.value = '';
-  qtyInput.value = '1';
-  catInput.value = 'Основное';
-  renderAll();
-  autoSave();
-  showStatus('✅ Товар добавлен');
-}
-
-// Архивация купленных
-function archiveBought() {
-  const boughtItems = items.filter(i => i.bought);
-  if (boughtItems.length === 0) {
-    alert('Нет купленных товаров для архивации.');
-    return;
-  }
-
-  const now = new Date();
-  const dateStr = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
-
-  boughtItems.forEach(item => {
-    archiveData.push({
-      archivedAt: Date.now(),
-      name: item.name,
-      qty: item.qty,
-      price: item.price || 0,
-      total: item.price || 0,
-      date: dateStr
-    });
-  });
-
-  items = items.filter(i => !i.bought);
-  renderAll();
-  autoSave();
-  showStatus(`📦 Архивировано ${boughtItems.length} товаров`);
+  autoSaveTimer = setTimeout(saveToLocalStorage, 800);
 }
 
 // === ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ ===
@@ -944,10 +884,8 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('archiveBtn').addEventListener('click', archiveBought);
   document.getElementById('gotoArchiveBtn').addEventListener('click', showArchive);
   document.getElementById('backToActive').addEventListener('click', showActive);
-
-  // Сохранение и синхронизация
-  document.getElementById('saveBtn').addEventListener('click', saveToServer);
-  document.getElementById('syncBtn').addEventListener('click', loadFromServer);
+  document.getElementById('saveBtn').addEventListener('click', saveToLocalStorage);
+  document.getElementById('syncBtn').addEventListener('click', loadFromLocalStorage);
 
   // Поиск
   searchInput.addEventListener('input', function() {
@@ -979,25 +917,16 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // Загрузка данных
-  loadFromServer().catch(() => {
-    loadFromLocalStorage();
+  loadFromLocalStorage();
+
+  // Автосохранение при изменении
+  window.addEventListener('beforeunload', function() {
+    saveToLocalStorage();
   });
-
-  // Автосохранение на сервер каждые 60 секунд (если есть изменения)
-  setInterval(() => {
-    if (items.length > 0 || archiveData.length > 0) {
-      saveToServer();
-    }
-  }, 60000);
-});
-
-// Сохраняем при закрытии страницы
-window.addEventListener('beforeunload', function() {
-  saveToLocalStorage();
 });
 
 console.log('✅ Список покупок готов!');
-console.log('📌 Скрипт: ' + SCRIPT_URL);
+console.log('📌 Данные хранятся в localStorage вашего браузера');
 </script>
 </body>
 </html>

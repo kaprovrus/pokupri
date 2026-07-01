@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
+    /* ... все стили из предыдущей версии ... */
     * {
       margin: 0;
       padding: 0;
@@ -31,7 +32,6 @@
       max-width: 800px;
       margin: 0 auto;
     }
-    /* Header & theme toggle */
     .header {
       display: flex;
       justify-content: space-between;
@@ -73,10 +73,6 @@
       background: #334155;
       color: #f1f5f9;
     }
-    .theme-toggle i {
-      font-size: 1.1rem;
-    }
-    /* карточки */
     .card {
       background: #ffffff;
       border-radius: 28px;
@@ -89,7 +85,6 @@
       background: #1e293b;
       box-shadow: 0 8px 20px rgba(0,0,0,0.3);
     }
-    /* форма */
     .add-form {
       display: flex;
       flex-wrap: wrap;
@@ -172,13 +167,6 @@
     .btn-success:hover {
       background: #16a34a;
     }
-    .btn-danger {
-      background: #ef4444;
-      box-shadow: 0 4px 10px rgba(239,68,68,0.2);
-    }
-    .btn-danger:hover {
-      background: #dc2626;
-    }
     .btn-archive {
       background: #8b5cf6;
       box-shadow: 0 4px 10px rgba(139,92,246,0.25);
@@ -193,7 +181,6 @@
     .btn-sync:hover {
       background: #0284c7;
     }
-    /* товарные карточки */
     .item-card {
       display: flex;
       flex-wrap: wrap;
@@ -279,7 +266,6 @@
     body.dark .item-card .delete-btn:hover {
       background: #3b2a2a;
     }
-    /* статистика */
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -374,7 +360,6 @@
       background: #2d3a5f;
       color: #93b4f8;
     }
-    /* Архив */
     .page-archive {
       display: none;
     }
@@ -415,7 +400,6 @@
       margin-bottom: 20px;
       display: inline-block;
     }
-    /* статус */
     #statusMessage {
       position: fixed;
       bottom: 20px;
@@ -445,22 +429,18 @@
 </head>
 <body>
 <div class="container" id="app">
-  <!-- статус -->
   <div id="statusMessage"></div>
 
-  <!-- шапка -->
   <div class="header">
     <h1><i class="fas fa-list-check"></i> Список покупок</h1>
     <div class="header-actions">
       <button class="btn btn-success" id="saveBtn"><i class="fas fa-save"></i> Сохранить</button>
-      <button class="btn btn-sync" id="syncBtn"><i class="fas fa-sync"></i> Восстановить</button>
+      <button class="btn btn-sync" id="syncBtn"><i class="fas fa-sync"></i> Загрузить</button>
       <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i> <span id="themeLabel">Тёмная</span></button>
     </div>
   </div>
 
-  <!-- Страница активного списка -->
   <div id="activePage" class="page-active">
-    <!-- форма добавления -->
     <div class="card">
       <form id="addForm" class="add-form">
         <div class="form-group">
@@ -479,7 +459,6 @@
       </form>
     </div>
 
-    <!-- поиск + фильтры + сортировка -->
     <div class="card">
       <div class="action-bar">
         <div class="search-box">
@@ -499,10 +478,8 @@
       </div>
     </div>
 
-    <!-- список товаров -->
     <div id="itemList"></div>
 
-    <!-- статистика -->
     <div class="stats-grid" id="statsGrid">
       <div class="stat-item">Всего <span id="totalCount">0</span></div>
       <div class="stat-item">Куплено <span id="boughtCount">0</span></div>
@@ -516,7 +493,6 @@
     </div>
   </div>
 
-  <!-- Страница архива -->
   <div id="archivePage" class="page-archive">
     <div class="back-link"><button class="btn btn-secondary" id="backToActive"><i class="fas fa-arrow-left"></i> Назад</button></div>
     <h2 style="margin-bottom:20px;"><i class="fas fa-archive"></i> Архив покупок</h2>
@@ -526,9 +502,12 @@
 
 <script>
 // ============================================================
-// ПОЛНЫЙ КОД С ЛОКАЛЬНЫМ ХРАНЕНИЕМ (localStorage)
-// БЕЗ CORS-ПРОБЛЕМ, РАБОТАЕТ НА GITHUB PAGES
+// ПОЛНЫЙ КОД С ПОДДЕРЖКОЙ ВАШЕГО GOOGLE APPS SCRIPT
+// ССЫЛКА: https://script.google.com/macros/s/AKfycbyxnw5i9l4KxoSfb4lIthj2kQpj3aJZ-M4c6Xze-gYB-v9Mt2Flt4OZmzKb8kAIL-Zk/exec
 // ============================================================
+
+// === НАСТРОЙКИ ===
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyxnw5i9l4KxoSfb4lIthj2kQpj3aJZ-M4c6Xze-gYB-v9Mt2Flt4OZmzKb8kAIL-Zk/exec';
 
 // === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
 let items = [];
@@ -537,6 +516,7 @@ let currentFilter = 'all';
 let searchQuery = '';
 let sortMode = 'date';
 let autoSaveTimer = null;
+let isSaving = false;
 
 // === DOM ЭЛЕМЕНТЫ ===
 const itemListEl = document.getElementById('itemList');
@@ -564,12 +544,113 @@ function showStatus(message, isError = false) {
   clearTimeout(statusEl._timeout);
   statusEl._timeout = setTimeout(() => {
     statusEl.style.display = 'none';
-  }, 2500);
+  }, 3000);
 }
 
-// === РАБОТА С LOCALSTORAGE ===
+// === РАБОТА С GOOGLE APPS SCRIPT ===
 
-// Сохранение
+// Загрузка через JSONP (обход CORS для GET)
+function loadFromServer() {
+  showStatus('🔄 Загрузка данных...');
+  
+  const callbackName = 'jsonpCallback_' + Date.now();
+  
+  window[callbackName] = function(data) {
+    try {
+      if (data && data.success && data.items) {
+        items = data.items.map(item => ({
+          ...item,
+          bought: item.bought === true || item.bought === 'true',
+          price: parseFloat(item.price) || 0,
+          createdAt: parseInt(item.createdAt) || Date.now()
+        }));
+        archiveData = (data.archive || []).map(item => ({
+          ...item,
+          price: parseFloat(item.price) || 0,
+          total: parseFloat(item.total) || 0,
+          archivedAt: parseInt(item.archivedAt) || Date.now()
+        }));
+        renderAll();
+        saveToLocalStorage();
+        showStatus('✅ Данные загружены из таблицы');
+      } else {
+        showStatus('⚠️ Ошибка загрузки данных', true);
+        loadFromLocalStorage();
+      }
+    } catch (e) {
+      console.error('Ошибка:', e);
+      showStatus('⚠️ Ошибка загрузки', true);
+      loadFromLocalStorage();
+    } finally {
+      delete window[callbackName];
+      const script = document.querySelector('script[src*="' + SCRIPT_URL + '"]');
+      if (script) script.remove();
+    }
+  };
+
+  // Создаём JSONP-запрос
+  const script = document.createElement('script');
+  script.src = SCRIPT_URL + '?action=getItems&callback=' + callbackName;
+  script.onerror = function() {
+    showStatus('⚠️ Ошибка соединения с сервером', true);
+    loadFromLocalStorage();
+    delete window[callbackName];
+    this.remove();
+  };
+  document.body.appendChild(script);
+}
+
+// Сохранение на сервер (POST с fetch, но с обходом через отправку формы)
+function saveToServer() {
+  if (isSaving) return;
+  isSaving = true;
+  showStatus('💾 Сохранение в таблицу...');
+
+  const payload = {
+    action: 'saveAll',
+    items: items.map(item => ({
+      id: item.id,
+      name: item.name,
+      qty: item.qty,
+      bought: item.bought,
+      price: item.price || 0,
+      createdAt: item.createdAt || Date.now(),
+      category: item.category || ''
+    })),
+    archive: archiveData.map(item => ({
+      archivedAt: item.archivedAt || Date.now(),
+      name: item.name,
+      qty: item.qty,
+      price: item.price || 0,
+      total: item.total || item.price || 0
+    }))
+  };
+
+  // Используем fetch с mode: 'no-cors' (ответ не будет виден, но запрос отправится)
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload)
+  })
+  .then(() => {
+    showStatus('✅ Запрос отправлен (проверьте таблицу)');
+    saveToLocalStorage();
+  })
+  .catch((error) => {
+    console.error('Ошибка сохранения:', error);
+    showStatus('⚠️ Ошибка сохранения, сохранено локально', true);
+    saveToLocalStorage();
+  })
+  .finally(() => {
+    isSaving = false;
+  });
+}
+
+// === РАБОТА С LOCALSTORAGE (резерв) ===
+
 function saveToLocalStorage() {
   try {
     const data = {
@@ -578,14 +659,11 @@ function saveToLocalStorage() {
       lastSave: new Date().toISOString()
     };
     localStorage.setItem('shoppingList', JSON.stringify(data));
-    showStatus('💾 Сохранено в браузере');
   } catch (e) {
-    console.error('Ошибка сохранения:', e);
-    showStatus('⚠️ Ошибка сохранения', true);
+    console.error('Ошибка локального сохранения:', e);
   }
 }
 
-// Загрузка
 function loadFromLocalStorage() {
   try {
     const saved = localStorage.getItem('shoppingList');
@@ -594,13 +672,12 @@ function loadFromLocalStorage() {
       items = data.items || [];
       archiveData = data.archive || [];
       renderAll();
-      showStatus('📂 Загружено из браузера (' + items.length + ' товаров)');
+      showStatus('📂 Загружено из кэша браузера');
     } else {
-      // Тестовые данные при первом запуске
+      // Тестовые данные
       items = [
         { id: '1', name: 'Молоко', qty: '2 л', category: 'Молочное', bought: false, price: 0, createdAt: Date.now() - 200000 },
-        { id: '2', name: 'Хлеб', qty: '1 шт', category: 'Выпечка', bought: false, price: 0, createdAt: Date.now() - 100000 },
-        { id: '3', name: 'Яблоки', qty: '1 кг', category: 'Фрукты', bought: false, price: 0, createdAt: Date.now() - 50000 }
+        { id: '2', name: 'Хлеб', qty: '1 шт', category: 'Выпечка', bought: false, price: 0, createdAt: Date.now() - 100000 }
       ];
       archiveData = [];
       renderAll();
@@ -609,8 +686,6 @@ function loadFromLocalStorage() {
     }
   } catch (e) {
     console.error('Ошибка загрузки:', e);
-    showStatus('⚠️ Ошибка загрузки', true);
-    // Создаём пустой список
     items = [];
     archiveData = [];
     renderAll();
@@ -619,7 +694,6 @@ function loadFromLocalStorage() {
 
 // === ОСНОВНЫЕ ФУНКЦИИ ===
 
-// Добавление товара
 function addItem(e) {
   e.preventDefault();
   const name = nameInput.value.trim();
@@ -651,7 +725,6 @@ function addItem(e) {
   showStatus('✅ Товар добавлен: ' + name);
 }
 
-// Удаление товара
 function deleteItem(id) {
   if (!confirm('Удалить товар?')) return;
   const item = items.find(i => i.id === id);
@@ -661,7 +734,6 @@ function deleteItem(id) {
   if (item) showStatus('🗑️ Удалено: ' + item.name);
 }
 
-// Переключение статуса "куплено"
 function toggleBought(id, priceInput) {
   const item = items.find(i => i.id === id);
   if (!item) return;
@@ -676,7 +748,6 @@ function toggleBought(id, priceInput) {
   autoSave();
 }
 
-// Изменение цены
 function updatePrice(id, value) {
   const item = items.find(i => i.id === id);
   if (!item) return;
@@ -688,7 +759,6 @@ function updatePrice(id, value) {
   }
 }
 
-// Архивация купленных
 function archiveBought() {
   const boughtItems = items.filter(i => i.bought);
   if (boughtItems.length === 0) {
@@ -718,7 +788,6 @@ function archiveBought() {
 
 // === РЕНДЕРИНГ ===
 
-// Рендер списка товаров
 function renderItems() {
   let filtered = items.filter(item => {
     const matchSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -728,7 +797,6 @@ function renderItems() {
     return true;
   });
 
-  // Сортировка
   if (sortMode === 'name') {
     filtered.sort((a, b) => a.name.localeCompare(b.name));
   } else if (sortMode === 'price') {
@@ -758,7 +826,6 @@ function renderItems() {
   });
   itemListEl.innerHTML = html;
 
-  // Обработчики
   document.querySelectorAll('.item-card').forEach(card => {
     const id = card.dataset.id;
     const cb = card.querySelector('.checkbox');
@@ -774,7 +841,6 @@ function renderItems() {
     });
 
     priceInput.addEventListener('input', function() {
-      // Обновляем статистику в реальном времени
       const item = items.find(i => i.id === id);
       if (item) {
         const val = parseFloat(this.value);
@@ -793,7 +859,6 @@ function renderItems() {
   updateStats();
 }
 
-// Обновление статистики
 function updateStats() {
   const total = items.length;
   const bought = items.filter(i => i.bought).length;
@@ -806,7 +871,6 @@ function updateStats() {
   statsPrice.textContent = totalPrice.toFixed(2);
 }
 
-// Рендер архива
 function renderArchive() {
   if (archiveData.length === 0) {
     archiveContent.innerHTML = `<div style="padding:20px; text-align:center; opacity:0.6;">Архив пуст</div>`;
@@ -845,13 +909,11 @@ function renderArchive() {
   archiveContent.innerHTML = html;
 }
 
-// Полный рендер
 function renderAll() {
   renderItems();
   renderArchive();
 }
 
-// Автосохранение
 function autoSave() {
   clearTimeout(autoSaveTimer);
   autoSaveTimer = setTimeout(saveToLocalStorage, 800);
@@ -877,23 +939,19 @@ function showArchive() {
 // === ИНИЦИАЛИЗАЦИЯ ===
 
 document.addEventListener('DOMContentLoaded', function() {
-  // Форма добавления
   addForm.addEventListener('submit', addItem);
 
-  // Кнопки
   document.getElementById('archiveBtn').addEventListener('click', archiveBought);
   document.getElementById('gotoArchiveBtn').addEventListener('click', showArchive);
   document.getElementById('backToActive').addEventListener('click', showActive);
-  document.getElementById('saveBtn').addEventListener('click', saveToLocalStorage);
-  document.getElementById('syncBtn').addEventListener('click', loadFromLocalStorage);
+  document.getElementById('saveBtn').addEventListener('click', saveToServer);
+  document.getElementById('syncBtn').addEventListener('click', loadFromServer);
 
-  // Поиск
   searchInput.addEventListener('input', function() {
     searchQuery = this.value;
     renderItems();
   });
 
-  // Фильтры
   filterBtns.forEach(btn => {
     btn.addEventListener('click', function() {
       filterBtns.forEach(b => b.classList.remove('active'));
@@ -903,12 +961,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // Сортировка
   document.getElementById('sortName').addEventListener('click', () => { sortMode = 'name'; renderItems(); });
   document.getElementById('sortPrice').addEventListener('click', () => { sortMode = 'price'; renderItems(); });
   document.getElementById('sortDate').addEventListener('click', () => { sortMode = 'date'; renderItems(); });
 
-  // Тема
   document.getElementById('themeToggle').addEventListener('click', function() {
     document.body.classList.toggle('dark');
     const isDark = document.body.classList.contains('dark');
@@ -916,17 +972,23 @@ document.addEventListener('DOMContentLoaded', function() {
     this.querySelector('i').className = isDark ? 'fas fa-sun' : 'fas fa-moon';
   });
 
-  // Загрузка данных
-  loadFromLocalStorage();
+  // Сначала пытаемся загрузить из таблицы, если не получится — из localStorage
+  loadFromServer();
+  
+  // Автосохранение на сервер каждые 60 секунд
+  setInterval(() => {
+    if (items.length > 0 || archiveData.length > 0) {
+      saveToServer();
+    }
+  }, 60000);
 
-  // Автосохранение при изменении
   window.addEventListener('beforeunload', function() {
     saveToLocalStorage();
   });
 });
 
 console.log('✅ Список покупок готов!');
-console.log('📌 Данные хранятся в localStorage вашего браузера');
+console.log('📌 Ссылка на скрипт: ' + SCRIPT_URL);
 </script>
 </body>
 </html>

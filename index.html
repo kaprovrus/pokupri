@@ -37,6 +37,8 @@
     .btn-archive:hover { background: #7c3aed; }
     .btn-sync { background: #0ea5e9; }
     .btn-sync:hover { background: #0284c7; }
+    .btn-danger { background: #ef4444; }
+    .btn-danger:hover { background: #dc2626; }
     .item-card { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 16px 20px; background: #f8fafc; border-radius: 40px; margin-bottom: 12px; border: 1px solid rgba(0,0,0,0.02); }
     body.dark .item-card { background: #2d3a4f; border-color: #3b4a5f; }
     .item-card.bought { opacity: 0.6; order: 999; background: #e9edf2; }
@@ -76,6 +78,7 @@
     .back-link { margin-bottom: 20px; display: inline-block; }
     #statusMessage { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 60px; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 9999; display: none; }
     body.dark #statusMessage { background: #334155; }
+    .archive-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
     @media (max-width: 600px) { .add-form { flex-direction: column; } .item-card { flex-wrap: wrap; } .item-card .price-input { width: 100%; } .header { flex-direction: column; align-items: stretch; } .header-actions { justify-content: center; } }
   </style>
 </head>
@@ -147,15 +150,17 @@
 
   <div id="archivePage" class="page-archive">
     <div class="back-link"><button class="btn btn-secondary" id="backToActive"><i class="fas fa-arrow-left"></i> Назад</button></div>
-    <h2 style="margin-bottom:20px;"><i class="fas fa-archive"></i> Архив покупок</h2>
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:20px;">
+      <h2><i class="fas fa-archive"></i> Архив покупок</h2>
+      <button class="btn btn-danger" id="clearArchiveBtn"><i class="fas fa-trash"></i> Очистить архив</button>
+    </div>
     <div id="archiveContent"></div>
   </div>
 </div>
 
 <script>
 // ============================================================
-// ПОЛНЫЙ КОД С ПОДДЕРЖКОЙ JSONP
-// ССЫЛКА НА СКРИПТ: https://script.google.com/macros/s/AKfycbyxnw5i9l4KxoSfb4lIthj2kQpj3aJZ-M4c6Xze-gYB-v9Mt2Flt4OZmzKb8kAIL-Zk/exec
+// ИСПРАВЛЕННАЯ ВЕРСИЯ — АРХИВ ОБНОВЛЯЕТСЯ ПРАВИЛЬНО
 // ============================================================
 
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyxnw5i9l4KxoSfb4lIthj2kQpj3aJZ-M4c6Xze-gYB-v9Mt2Flt4OZmzKb8kAIL-Zk/exec';
@@ -168,6 +173,7 @@ let sortMode = 'date';
 let autoSaveTimer = null;
 let isSaving = false;
 
+// DOM элементы
 const itemListEl = document.getElementById('itemList');
 const addForm = document.getElementById('addForm');
 const nameInput = document.getElementById('itemName');
@@ -182,6 +188,7 @@ const statsPrice = document.getElementById('totalPrice');
 const statusEl = document.getElementById('statusMessage');
 const archiveContent = document.getElementById('archiveContent');
 
+// ===== СТАТУС =====
 function showStatus(message, isError = false) {
   statusEl.textContent = message;
   statusEl.style.display = 'block';
@@ -222,7 +229,7 @@ function loadFromServer() {
         }
         renderAll();
         saveToLocalStorage();
-        showStatus('✅ Данные загружены из таблицы (' + items.length + ' товаров)');
+        showStatus('✅ Данные загружены из таблицы (' + items.length + ' товаров, ' + archiveData.length + ' в архиве)');
       } else {
         showStatus('⚠️ Ошибка загрузки: ' + (data.error || 'неизвестная'), true);
         loadFromLocalStorage();
@@ -275,13 +282,10 @@ function saveToServer() {
     }))
   };
 
-  // Отправляем через обычный POST (CORS может блокировать ответ, но запрос уйдёт)
   fetch(SCRIPT_URL, {
     method: 'POST',
     mode: 'no-cors',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   })
   .then(() => {
@@ -299,7 +303,6 @@ function saveToServer() {
 }
 
 // ===== LOCALSTORAGE =====
-
 function saveToLocalStorage() {
   try {
     localStorage.setItem('shoppingList', JSON.stringify({ items, archive: archiveData }));
@@ -322,7 +325,9 @@ function loadFromLocalStorage() {
         { id: '1', name: 'Молоко', qty: '2 л', category: 'Молочное', bought: false, price: 0, createdAt: Date.now() - 200000 },
         { id: '2', name: 'Хлеб', qty: '1 шт', category: 'Выпечка', bought: false, price: 0, createdAt: Date.now() - 100000 }
       ];
-      archiveData = [];
+      archiveData = [
+        { archivedAt: Date.now() - 86400000, name: 'Сметана', qty: '200 г', price: 80, total: 80, date: new Date(Date.now() - 86400000).toLocaleDateString() }
+      ];
       renderAll();
       saveToLocalStorage();
       showStatus('📝 Созданы примеры товаров');
@@ -402,6 +407,7 @@ function updatePrice(id, value) {
   }
 }
 
+// ===== АРХИВАЦИЯ (ИСПРАВЛЕНА) =====
 function archiveBought() {
   const boughtItems = items.filter(i => i.bought);
   if (boughtItems.length === 0) {
@@ -412,6 +418,7 @@ function archiveBought() {
   const now = new Date();
   const dateStr = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
 
+  // Добавляем в архив
   boughtItems.forEach(item => {
     archiveData.push({
       archivedAt: Date.now(),
@@ -423,10 +430,33 @@ function archiveBought() {
     });
   });
 
+  // Удаляем из активного списка
   items = items.filter(i => !i.bought);
-  renderAll();
+  
+  // Сохраняем и обновляем
   saveToLocalStorage();
+  renderAll();
+  
+  // Если страница архива открыта — обновляем её
+  if (document.getElementById('archivePage').style.display === 'block') {
+    renderArchive();
+  }
+  
   showStatus('📦 Архивировано ' + boughtItems.length + ' товаров');
+}
+
+// ===== ОЧИСТКА АРХИВА =====
+function clearArchive() {
+  if (archiveData.length === 0) {
+    showStatus('⚠️ Архив уже пуст', true);
+    return;
+  }
+  if (!confirm('Удалить все записи из архива?')) return;
+  
+  archiveData = [];
+  saveToLocalStorage();
+  renderArchive();
+  showStatus('🗑️ Архив очищен');
 }
 
 // ===== РЕНДЕРИНГ =====
@@ -516,10 +546,11 @@ function updateStats() {
 
 function renderArchive() {
   if (archiveData.length === 0) {
-    archiveContent.innerHTML = `<div style="padding:20px; text-align:center; opacity:0.6;">Архив пуст</div>`;
+    archiveContent.innerHTML = `<div style="padding:40px; text-align:center; opacity:0.6;">📭 Архив пуст</div>`;
     return;
   }
 
+  // Группировка по дате
   const groups = {};
   archiveData.forEach(entry => {
     const key = entry.date || new Date(entry.archivedAt).toLocaleDateString();
@@ -533,14 +564,22 @@ function renderArchive() {
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  Object.keys(groups).forEach(dateKey => {
+  // Сортируем даты (новые сверху)
+  const sortedDates = Object.keys(groups).sort((a, b) => {
+    const dateA = new Date(a);
+    const dateB = new Date(b);
+    return dateB - dateA;
+  });
+
+  sortedDates.forEach(dateKey => {
     const entries = groups[dateKey];
     const sum = entries.reduce((acc, e) => acc + (e.price || 0), 0);
+    
     html += `<div class="archive-group"><div class="archive-date">📅 ${dateKey}</div>`;
     entries.forEach(e => {
       html += `<div class="archive-item"><span>${e.name} (${e.qty})</span><span>${e.price ? e.price.toFixed(2) : '0'} ₽</span></div>`;
     });
-    html += `<div class="month-total">Итого за день: ${sum.toFixed(2)} ₽</div></div>`;
+    html += `<div class="month-total">💰 Итого за день: ${sum.toFixed(2)} ₽</div></div>`;
 
     const d = new Date(dateKey);
     if (!isNaN(d) && d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
@@ -548,13 +587,16 @@ function renderArchive() {
     }
   });
 
-  html += `<div style="margin-top:20px; font-weight:600; background: #8b5cf6; color:white; padding:12px 24px; border-radius:60px; display:inline-block;">Общая сумма за месяц: ${monthTotal.toFixed(2)} ₽</div>`;
+  html += `<div style="margin-top:20px; font-weight:600; background: #8b5cf6; color:white; padding:12px 24px; border-radius:60px; display:inline-block;">📊 Общая сумма за месяц: ${monthTotal.toFixed(2)} ₽</div>`;
   archiveContent.innerHTML = html;
 }
 
 function renderAll() {
   renderItems();
-  renderArchive();
+  // Обновляем архив только если страница архива видима
+  if (document.getElementById('archivePage').style.display === 'block') {
+    renderArchive();
+  }
 }
 
 function autoSave() {
@@ -576,25 +618,30 @@ function showArchive() {
   document.getElementById('activePage').style.display = 'none';
   document.getElementById('archivePage').style.display = 'block';
   document.getElementById('archivePage').classList.add('page-active');
-  renderArchive();
+  renderArchive(); // Обновляем архив при переходе
 }
 
 // ===== ИНИЦИАЛИЗАЦИЯ =====
 
 document.addEventListener('DOMContentLoaded', function() {
+  // Форма добавления
   addForm.addEventListener('submit', addItem);
 
+  // Кнопки
   document.getElementById('archiveBtn').addEventListener('click', archiveBought);
   document.getElementById('gotoArchiveBtn').addEventListener('click', showArchive);
   document.getElementById('backToActive').addEventListener('click', showActive);
   document.getElementById('saveBtn').addEventListener('click', saveToServer);
   document.getElementById('syncBtn').addEventListener('click', loadFromServer);
+  document.getElementById('clearArchiveBtn').addEventListener('click', clearArchive);
 
+  // Поиск
   searchInput.addEventListener('input', function() {
     searchQuery = this.value;
     renderItems();
   });
 
+  // Фильтры
   filterBtns.forEach(btn => {
     btn.addEventListener('click', function() {
       filterBtns.forEach(b => b.classList.remove('active'));
@@ -604,10 +651,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // Сортировка
   document.getElementById('sortName').addEventListener('click', () => { sortMode = 'name'; renderItems(); });
   document.getElementById('sortPrice').addEventListener('click', () => { sortMode = 'price'; renderItems(); });
   document.getElementById('sortDate').addEventListener('click', () => { sortMode = 'date'; renderItems(); });
 
+  // Тема
   document.getElementById('themeToggle').addEventListener('click', function() {
     document.body.classList.toggle('dark');
     const isDark = document.body.classList.contains('dark');
@@ -615,16 +664,17 @@ document.addEventListener('DOMContentLoaded', function() {
     this.querySelector('i').className = isDark ? 'fas fa-sun' : 'fas fa-moon';
   });
 
-  // Загружаем данные
+  // Загрузка данных
   loadFromServer();
 
+  // Сохранение при закрытии
   window.addEventListener('beforeunload', function() {
     saveToLocalStorage();
   });
 });
 
 console.log('✅ Список покупок готов!');
-console.log('📌 Ссылка на скрипт: ' + SCRIPT_URL);
+console.log('📌 Архив теперь обновляется правильно');
 </script>
 </body>
 </html>

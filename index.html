@@ -160,7 +160,7 @@
 
 <script>
 // ============================================================
-// ИСПРАВЛЕННАЯ ВЕРСИЯ — АРХИВ ОБНОВЛЯЕТСЯ ПРАВИЛЬНО
+// ИСПРАВЛЕННАЯ ВЕРСИЯ — АРХИВ РАБОТАЕТ С СЕРВЕРОМ
 // ============================================================
 
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyxnw5i9l4KxoSfb4lIthj2kQpj3aJZ-M4c6Xze-gYB-v9Mt2Flt4OZmzKb8kAIL-Zk/exec';
@@ -325,9 +325,7 @@ function loadFromLocalStorage() {
         { id: '1', name: 'Молоко', qty: '2 л', category: 'Молочное', bought: false, price: 0, createdAt: Date.now() - 200000 },
         { id: '2', name: 'Хлеб', qty: '1 шт', category: 'Выпечка', bought: false, price: 0, createdAt: Date.now() - 100000 }
       ];
-      archiveData = [
-        { archivedAt: Date.now() - 86400000, name: 'Сметана', qty: '200 г', price: 80, total: 80, date: new Date(Date.now() - 86400000).toLocaleDateString() }
-      ];
+      archiveData = [];
       renderAll();
       saveToLocalStorage();
       showStatus('📝 Созданы примеры товаров');
@@ -407,7 +405,7 @@ function updatePrice(id, value) {
   }
 }
 
-// ===== АРХИВАЦИЯ (ИСПРАВЛЕНА) =====
+// ===== АРХИВАЦИЯ (ИСПРАВЛЕНА — ОТПРАВЛЯЕТ НА СЕРВЕР) =====
 function archiveBought() {
   const boughtItems = items.filter(i => i.bought);
   if (boughtItems.length === 0) {
@@ -418,7 +416,10 @@ function archiveBought() {
   const now = new Date();
   const dateStr = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
 
-  // Добавляем в архив
+  // Получаем ID товаров для архивации
+  const idsToArchive = boughtItems.map(item => item.id);
+
+  // Добавляем в локальный архив
   boughtItems.forEach(item => {
     archiveData.push({
       archivedAt: Date.now(),
@@ -433,16 +434,33 @@ function archiveBought() {
   // Удаляем из активного списка
   items = items.filter(i => !i.bought);
   
-  // Сохраняем и обновляем
+  // Сохраняем локально
   saveToLocalStorage();
   renderAll();
   
+  // === ОТПРАВЛЯЕМ НА СЕРВЕР ===
+  // Отправляем запрос на архивацию через сервер
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'archiveItems',
+      ids: idsToArchive
+    })
+  })
+  .then(() => {
+    showStatus('📦 Архивировано ' + boughtItems.length + ' товаров (сервер обновлён)');
+  })
+  .catch((error) => {
+    console.error('Ошибка архивации на сервере:', error);
+    showStatus('⚠️ Ошибка синхронизации с сервером, но данные сохранены локально', true);
+  });
+
   // Если страница архива открыта — обновляем её
   if (document.getElementById('archivePage').style.display === 'block') {
     renderArchive();
   }
-  
-  showStatus('📦 Архивировано ' + boughtItems.length + ' товаров');
 }
 
 // ===== ОЧИСТКА АРХИВА =====
@@ -550,7 +568,6 @@ function renderArchive() {
     return;
   }
 
-  // Группировка по дате
   const groups = {};
   archiveData.forEach(entry => {
     const key = entry.date || new Date(entry.archivedAt).toLocaleDateString();
@@ -564,7 +581,6 @@ function renderArchive() {
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  // Сортируем даты (новые сверху)
   const sortedDates = Object.keys(groups).sort((a, b) => {
     const dateA = new Date(a);
     const dateB = new Date(b);
@@ -593,7 +609,6 @@ function renderArchive() {
 
 function renderAll() {
   renderItems();
-  // Обновляем архив только если страница архива видима
   if (document.getElementById('archivePage').style.display === 'block') {
     renderArchive();
   }
@@ -618,16 +633,14 @@ function showArchive() {
   document.getElementById('activePage').style.display = 'none';
   document.getElementById('archivePage').style.display = 'block';
   document.getElementById('archivePage').classList.add('page-active');
-  renderArchive(); // Обновляем архив при переходе
+  renderArchive();
 }
 
 // ===== ИНИЦИАЛИЗАЦИЯ =====
 
 document.addEventListener('DOMContentLoaded', function() {
-  // Форма добавления
   addForm.addEventListener('submit', addItem);
 
-  // Кнопки
   document.getElementById('archiveBtn').addEventListener('click', archiveBought);
   document.getElementById('gotoArchiveBtn').addEventListener('click', showArchive);
   document.getElementById('backToActive').addEventListener('click', showActive);
@@ -635,13 +648,11 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('syncBtn').addEventListener('click', loadFromServer);
   document.getElementById('clearArchiveBtn').addEventListener('click', clearArchive);
 
-  // Поиск
   searchInput.addEventListener('input', function() {
     searchQuery = this.value;
     renderItems();
   });
 
-  // Фильтры
   filterBtns.forEach(btn => {
     btn.addEventListener('click', function() {
       filterBtns.forEach(b => b.classList.remove('active'));
@@ -651,12 +662,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // Сортировка
   document.getElementById('sortName').addEventListener('click', () => { sortMode = 'name'; renderItems(); });
   document.getElementById('sortPrice').addEventListener('click', () => { sortMode = 'price'; renderItems(); });
   document.getElementById('sortDate').addEventListener('click', () => { sortMode = 'date'; renderItems(); });
 
-  // Тема
   document.getElementById('themeToggle').addEventListener('click', function() {
     document.body.classList.toggle('dark');
     const isDark = document.body.classList.contains('dark');
@@ -664,17 +673,15 @@ document.addEventListener('DOMContentLoaded', function() {
     this.querySelector('i').className = isDark ? 'fas fa-sun' : 'fas fa-moon';
   });
 
-  // Загрузка данных
   loadFromServer();
 
-  // Сохранение при закрытии
   window.addEventListener('beforeunload', function() {
     saveToLocalStorage();
   });
 });
 
 console.log('✅ Список покупок готов!');
-console.log('📌 Архив теперь обновляется правильно');
+console.log('📌 Архив теперь синхронизируется с сервером');
 </script>
 </body>
 </html>

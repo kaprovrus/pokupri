@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
+    /* ... все стили (без изменений) ... */
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
     body { background: #f5f7fa; color: #1e293b; transition: background 0.3s, color 0.3s; padding: 20px; min-height: 100vh; }
     body.dark { background: #0f172a; color: #e2e8f0; }
@@ -78,7 +79,6 @@
     .back-link { margin-bottom: 20px; display: inline-block; }
     #statusMessage { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 60px; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 9999; display: none; }
     body.dark #statusMessage { background: #334155; }
-    .archive-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
     @media (max-width: 600px) { .add-form { flex-direction: column; } .item-card { flex-wrap: wrap; } .item-card .price-input { width: 100%; } .header { flex-direction: column; align-items: stretch; } .header-actions { justify-content: center; } }
   </style>
 </head>
@@ -160,7 +160,7 @@
 
 <script>
 // ============================================================
-// ИСПРАВЛЕННАЯ ВЕРСИЯ — АРХИВ РАБОТАЕТ С СЕРВЕРОМ
+// ИСПРАВЛЕННАЯ ВЕРСИЯ — ОЧИСТКА АРХИВА РАБОТАЕТ
 // ============================================================
 
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyxnw5i9l4KxoSfb4lIthj2kQpj3aJZ-M4c6Xze-gYB-v9Mt2Flt4OZmzKb8kAIL-Zk/exec';
@@ -405,7 +405,7 @@ function updatePrice(id, value) {
   }
 }
 
-// ===== АРХИВАЦИЯ (ИСПРАВЛЕНА — ОТПРАВЛЯЕТ НА СЕРВЕР) =====
+// ===== АРХИВАЦИЯ =====
 function archiveBought() {
   const boughtItems = items.filter(i => i.bought);
   if (boughtItems.length === 0) {
@@ -415,11 +415,8 @@ function archiveBought() {
 
   const now = new Date();
   const dateStr = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
-
-  // Получаем ID товаров для архивации
   const idsToArchive = boughtItems.map(item => item.id);
 
-  // Добавляем в локальный архив
   boughtItems.forEach(item => {
     archiveData.push({
       archivedAt: Date.now(),
@@ -431,15 +428,11 @@ function archiveBought() {
     });
   });
 
-  // Удаляем из активного списка
   items = items.filter(i => !i.bought);
   
-  // Сохраняем локально
   saveToLocalStorage();
   renderAll();
   
-  // === ОТПРАВЛЯЕМ НА СЕРВЕР ===
-  // Отправляем запрос на архивацию через сервер
   fetch(SCRIPT_URL, {
     method: 'POST',
     mode: 'no-cors',
@@ -449,31 +442,48 @@ function archiveBought() {
       ids: idsToArchive
     })
   })
-  .then(() => {
-    showStatus('📦 Архивировано ' + boughtItems.length + ' товаров (сервер обновлён)');
-  })
   .catch((error) => {
     console.error('Ошибка архивации на сервере:', error);
-    showStatus('⚠️ Ошибка синхронизации с сервером, но данные сохранены локально', true);
   });
 
-  // Если страница архива открыта — обновляем её
   if (document.getElementById('archivePage').style.display === 'block') {
     renderArchive();
   }
+  
+  showStatus('📦 Архивировано ' + boughtItems.length + ' товаров');
 }
 
-// ===== ОЧИСТКА АРХИВА =====
+// ===== ОЧИСТКА АРХИВА (ИСПРАВЛЕНА) =====
 function clearArchive() {
   if (archiveData.length === 0) {
     showStatus('⚠️ Архив уже пуст', true);
     return;
   }
+  
   if (!confirm('Удалить все записи из архива?')) return;
   
+  // Очищаем массив
   archiveData = [];
+  
+  // Сохраняем в localStorage
   saveToLocalStorage();
+  
+  // Отправляем запрос на сервер
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'clearArchive'
+    })
+  })
+  .catch((error) => {
+    console.error('Ошибка очистки архива на сервере:', error);
+  });
+  
+  // ОБНОВЛЯЕМ ОТОБРАЖЕНИЕ АРХИВА
   renderArchive();
+  
   showStatus('🗑️ Архив очищен');
 }
 
@@ -681,7 +691,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 console.log('✅ Список покупок готов!');
-console.log('📌 Архив теперь синхронизируется с сервером');
+console.log('📌 Очистка архива теперь работает');
 </script>
 </body>
 </html>

@@ -1,1 +1,899 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5">
+  <title>Список покупок</title>
+  <!-- Google Fonts & Font Awesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    body {
+      background: #f5f7fa;
+      color: #1e293b;
+      transition: background 0.3s, color 0.3s;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    body.dark {
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    /* Header & theme toggle */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .header h1 {
+      font-weight: 600;
+      font-size: 2rem;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .theme-toggle {
+      background: #e2e8f0;
+      border: none;
+      border-radius: 40px;
+      padding: 10px 18px;
+      font-size: 1rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+      color: #1e293b;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+    body.dark .theme-toggle {
+      background: #334155;
+      color: #f1f5f9;
+    }
+    .theme-toggle i {
+      font-size: 1.1rem;
+    }
+    /* карточки */
+    .card {
+      background: #ffffff;
+      border-radius: 28px;
+      padding: 20px 24px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.03), 0 4px 12px rgba(0,0,0,0.04);
+      margin-bottom: 24px;
+      transition: background 0.3s, box-shadow 0.2s;
+    }
+    body.dark .card {
+      background: #1e293b;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+    /* форма */
+    .add-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .form-group {
+      flex: 1 0 120px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .form-group label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      opacity: 0.7;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .form-group input {
+      background: #f1f5f9;
+      border: 1px solid transparent;
+      border-radius: 60px;
+      padding: 14px 18px;
+      font-size: 1rem;
+      transition: 0.2s;
+      outline: none;
+      width: 100%;
+      color: #0f172a;
+    }
+    body.dark .form-group input {
+      background: #334155;
+      color: #f1f5f9;
+      border-color: #475569;
+    }
+    .form-group input:focus {
+      border-color: #3b82f6;
+      background: #ffffff;
+      box-shadow: 0 0 0 4px rgba(59,130,246,0.15);
+    }
+    body.dark .form-group input:focus {
+      background: #1e293b;
+      border-color: #8b5cf6;
+    }
+    .btn {
+      background: #3b82f6;
+      border: none;
+      border-radius: 60px;
+      padding: 14px 28px;
+      font-weight: 600;
+      font-size: 1rem;
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+      box-shadow: 0 4px 10px rgba(59,130,246,0.25);
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .btn:hover {
+      background: #2563eb;
+      transform: scale(0.97);
+      box-shadow: 0 6px 14px rgba(59,130,246,0.35);
+    }
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #1e293b;
+      box-shadow: none;
+    }
+    body.dark .btn-secondary {
+      background: #334155;
+      color: #f1f5f9;
+    }
+    .btn-success {
+      background: #22c55e;
+      box-shadow: 0 4px 10px rgba(34,197,94,0.25);
+    }
+    .btn-success:hover {
+      background: #16a34a;
+    }
+    .btn-danger {
+      background: #ef4444;
+      box-shadow: 0 4px 10px rgba(239,68,68,0.2);
+    }
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+    .btn-archive {
+      background: #8b5cf6;
+      box-shadow: 0 4px 10px rgba(139,92,246,0.25);
+    }
+    .btn-archive:hover {
+      background: #7c3aed;
+    }
+    /* товарные карточки */
+    .item-card {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px 16px;
+      padding: 16px 20px;
+      background: #f8fafc;
+      border-radius: 40px;
+      margin-bottom: 12px;
+      transition: all 0.25s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+      border: 1px solid rgba(0,0,0,0.02);
+    }
+    body.dark .item-card {
+      background: #2d3a4f;
+      border-color: #3b4a5f;
+    }
+    .item-card.bought {
+      opacity: 0.6;
+      order: 999;
+      background: #e9edf2;
+    }
+    body.dark .item-card.bought {
+      background: #2a3649;
+    }
+    .item-card .checkbox {
+      width: 28px;
+      height: 28px;
+      accent-color: #22c55e;
+      cursor: pointer;
+      transform: scale(1.2);
+      flex-shrink: 0;
+    }
+    .item-card .item-name {
+      font-weight: 600;
+      flex: 2 1 120px;
+      font-size: 1.05rem;
+    }
+    .item-card .item-qty {
+      background: #e2e8f0;
+      padding: 4px 14px;
+      border-radius: 40px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      min-width: 50px;
+      text-align: center;
+    }
+    body.dark .item-card .item-qty {
+      background: #1e293b;
+    }
+    .item-card .price-input {
+      width: 100px;
+      padding: 8px 12px;
+      border-radius: 60px;
+      border: 1px solid #cbd5e1;
+      background: white;
+      font-size: 0.95rem;
+      flex-shrink: 0;
+      outline: none;
+    }
+    body.dark .item-card .price-input {
+      background: #1e293b;
+      border-color: #475569;
+      color: #f1f5f9;
+    }
+    .item-card .price-input:focus {
+      border-color: #3b82f6;
+    }
+    .item-card .delete-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 1.3rem;
+      cursor: pointer;
+      padding: 4px 8px;
+      transition: 0.2s;
+      border-radius: 40px;
+    }
+    .item-card .delete-btn:hover {
+      color: #ef4444;
+      background: #fee2e2;
+    }
+    body.dark .item-card .delete-btn:hover {
+      background: #3b2a2a;
+    }
+    /* статистика */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+      margin: 16px 0 24px;
+    }
+    .stat-item {
+      background: #f1f5f9;
+      border-radius: 60px;
+      padding: 12px 18px;
+      text-align: center;
+      font-weight: 500;
+    }
+    body.dark .stat-item {
+      background: #1e293b;
+    }
+    .stat-item span {
+      display: block;
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+    .action-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 16px 0 24px;
+      align-items: center;
+    }
+    .search-box {
+      flex: 2;
+      min-width: 180px;
+      background: #f1f5f9;
+      border-radius: 60px;
+      padding: 8px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid transparent;
+    }
+    body.dark .search-box {
+      background: #1e293b;
+      border-color: #475569;
+    }
+    .search-box i {
+      color: #94a3b8;
+    }
+    .search-box input {
+      background: transparent;
+      border: none;
+      padding: 12px 0;
+      width: 100%;
+      outline: none;
+      font-size: 1rem;
+      color: inherit;
+    }
+    .filter-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .filter-group .filter-btn {
+      background: #e2e8f0;
+      border: none;
+      border-radius: 40px;
+      padding: 8px 18px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: 0.2s;
+      color: #1e293b;
+    }
+    body.dark .filter-group .filter-btn {
+      background: #334155;
+      color: #e2e8f0;
+    }
+    .filter-group .filter-btn.active {
+      background: #3b82f6;
+      color: white;
+    }
+    body.dark .filter-group .filter-btn.active {
+      background: #8b5cf6;
+    }
+    .category-tag {
+      font-size: 0.7rem;
+      background: #dbeafe;
+      padding: 2px 14px;
+      border-radius: 60px;
+      font-weight: 500;
+      color: #1e40af;
+    }
+    body.dark .category-tag {
+      background: #2d3a5f;
+      color: #93b4f8;
+    }
+    .archived-link {
+      text-align: right;
+      margin: 10px 0;
+    }
+    .archived-link a {
+      color: #3b82f6;
+      font-weight: 500;
+      text-decoration: none;
+    }
+    body.dark .archived-link a {
+      color: #93b4f8;
+    }
+    /* Адаптив */
+    @media (max-width: 600px) {
+      .add-form { flex-direction: column; }
+      .item-card { flex-wrap: wrap; }
+      .item-card .price-input { width: 100%; }
+    }
+    /* Архив страница (скрыта по умолчанию) */
+    .page-archive {
+      display: none;
+    }
+    .page-active {
+      display: block;
+    }
+    .archive-group {
+      margin-bottom: 28px;
+      border-left: 4px solid #8b5cf6;
+      padding-left: 16px;
+    }
+    .archive-date {
+      font-weight: 600;
+      font-size: 1.2rem;
+      margin-bottom: 12px;
+    }
+    .archive-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px dashed #e2e8f0;
+    }
+    body.dark .archive-item {
+      border-color: #334155;
+    }
+    .month-total {
+      margin-top: 12px;
+      font-weight: 600;
+      background: #e2e8f0;
+      padding: 6px 18px;
+      border-radius: 40px;
+      display: inline-block;
+    }
+    body.dark .month-total {
+      background: #334155;
+    }
+    .back-link {
+      margin-bottom: 20px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+<div class="container" id="app">
+  <!-- шапка -->
+  <div class="header">
+    <h1><i class="fas fa-list-check"></i> Список покупок</h1>
+    <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i> <span id="themeLabel">Тёмная</span></button>
+  </div>
 
+  <!-- Страница активного списка -->
+  <div id="activePage" class="page-active">
+    <!-- форма добавления -->
+    <div class="card">
+      <form id="addForm" class="add-form">
+        <div class="form-group">
+          <label>Название</label>
+          <input type="text" id="itemName" placeholder="Молоко" required>
+        </div>
+        <div class="form-group">
+          <label>Количество</label>
+          <input type="text" id="itemQty" placeholder="2 л" value="1">
+        </div>
+        <div class="form-group">
+          <label>Категория</label>
+          <input type="text" id="itemCategory" placeholder="Молочное" value="Основное">
+        </div>
+        <button type="submit" class="btn"><i class="fas fa-plus"></i> Добавить</button>
+      </form>
+    </div>
+
+    <!-- поиск + фильтры + сортировка (упрощенно) -->
+    <div class="card">
+      <div class="action-bar">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input type="text" id="searchInput" placeholder="Поиск товара...">
+        </div>
+        <div class="filter-group">
+          <button class="filter-btn active" data-filter="all">Все</button>
+          <button class="filter-btn" data-filter="active">Купить</button>
+          <button class="filter-btn" data-filter="bought">Купленные</button>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
+        <button class="btn btn-secondary" id="sortName"><i class="fas fa-sort-alpha-down"></i> По названию</button>
+        <button class="btn btn-secondary" id="sortPrice"><i class="fas fa-sort-numeric-down"></i> По цене</button>
+        <button class="btn btn-secondary" id="sortDate"><i class="fas fa-calendar"></i> По дате</button>
+      </div>
+    </div>
+
+    <!-- список товаров -->
+    <div id="itemList"></div>
+
+    <!-- статистика -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-item">Всего <span id="totalCount">0</span></div>
+      <div class="stat-item">Куплено <span id="boughtCount">0</span></div>
+      <div class="stat-item">Осталось <span id="remainCount">0</span></div>
+      <div class="stat-item">💰 Сумма <span id="totalPrice">0</span></div>
+    </div>
+
+    <div style="display:flex; flex-wrap:wrap; gap:12px; margin:12px 0;">
+      <button class="btn btn-archive" id="archiveBtn"><i class="fas fa-box-archive"></i> Архивировать купленные</button>
+      <button class="btn btn-secondary" id="gotoArchiveBtn"><i class="fas fa-folder-open"></i> Архив</button>
+    </div>
+  </div>
+
+  <!-- Страница архива -->
+  <div id="archivePage" class="page-archive">
+    <div class="back-link"><button class="btn btn-secondary" id="backToActive"><i class="fas fa-arrow-left"></i> Назад</button></div>
+    <h2 style="margin-bottom:20px;"><i class="fas fa-archive"></i> Архив покупок</h2>
+    <div id="archiveContent"></div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    // ----- Глобальные состояния -----
+    let items = [];           // активные покупки
+    let archiveData = [];     // архивные записи
+    let currentFilter = 'all';
+    let searchQuery = '';
+    let sortMode = 'date';    // date, name, price
+
+    // DOM ссылки
+    const itemListEl = document.getElementById('itemList');
+    const addForm = document.getElementById('addForm');
+    const nameInput = document.getElementById('itemName');
+    const qtyInput = document.getElementById('itemQty');
+    const catInput = document.getElementById('itemCategory');
+    const searchInput = document.getElementById('searchInput');
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const statsTotal = document.getElementById('totalCount');
+    const statsBought = document.getElementById('boughtCount');
+    const statsRemain = document.getElementById('remainCount');
+    const statsPrice = document.getElementById('totalPrice');
+
+    // страницы
+    const activePage = document.getElementById('activePage');
+    const archivePage = document.getElementById('archivePage');
+    const archiveContent = document.getElementById('archiveContent');
+
+    // тема
+    const themeToggle = document.getElementById('themeToggle');
+    const themeLabel = document.getElementById('themeLabel');
+
+    // ---- Инициализация (заглушка с тестовыми данными) ----
+    function initMockData() {
+      // если нет данных, создаём пару примеров
+      if (items.length === 0) {
+        items = [
+          { id: '1', name: 'Молоко', qty: '2 л', category: 'Молочное', bought: false, price: 0, createdAt: Date.now() - 200000 },
+          { id: '2', name: 'Хлеб', qty: '1 шт', category: 'Выпечка', bought: true, price: 45, createdAt: Date.now() - 100000 },
+          { id: '3', name: 'Яблоки', qty: '1 кг', category: 'Овощи/фрукты', bought: false, price: 0, createdAt: Date.now() - 50000 },
+        ];
+      }
+      if (archiveData.length === 0) {
+        archiveData = [
+          { id: 'a1', name: 'Сметана', qty: '200 г', price: 80, archivedAt: Date.now() - 86400000, date: new Date(Date.now() - 86400000).toLocaleDateString() },
+          { id: 'a2', name: 'Масло', qty: '200 г', price: 120, archivedAt: Date.now() - 86400000, date: new Date(Date.now() - 86400000).toLocaleDateString() },
+        ];
+      }
+      renderAll();
+    }
+
+    // ---- Рендер активного списка ----
+    function renderItems() {
+      let filtered = items.filter(item => {
+        const matchSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+        if (currentFilter === 'all') return matchSearch;
+        if (currentFilter === 'active') return !item.bought && matchSearch;
+        if (currentFilter === 'bought') return item.bought && matchSearch;
+        return true;
+      });
+
+      // сортировка
+      if (sortMode === 'name') {
+        filtered.sort((a,b) => a.name.localeCompare(b.name));
+      } else if (sortMode === 'price') {
+        filtered.sort((a,b) => (a.price || 0) - (b.price || 0));
+      } else { // date
+        filtered.sort((a,b) => a.createdAt - b.createdAt);
+      }
+
+      if (filtered.length === 0) {
+        itemListEl.innerHTML = `<div style="padding:20px; text-align:center; opacity:0.6;">Нет товаров</div>`;
+        return;
+      }
+
+      let html = '';
+      filtered.forEach(item => {
+        const boughtClass = item.bought ? 'bought' : '';
+        const priceVal = item.price || '';
+        html += `
+          <div class="item-card ${boughtClass}" data-id="${item.id}">
+            <input type="checkbox" class="checkbox" ${item.bought ? 'checked' : ''}>
+            <span class="item-name">${item.name} <span class="category-tag">${item.category || 'без категории'}</span></span>
+            <span class="item-qty">${item.qty}</span>
+            <input type="number" class="price-input" placeholder="Цена" value="${priceVal}" step="0.01" min="0">
+            <button class="delete-btn"><i class="fas fa-trash-can"></i></button>
+          </div>
+        `;
+      });
+      itemListEl.innerHTML = html;
+
+      // обработчики событий на карточках
+      document.querySelectorAll('.item-card').forEach(card => {
+        const id = card.dataset.id;
+        const cb = card.querySelector('.checkbox');
+        const priceInput = card.querySelector('.price-input');
+        const delBtn = card.querySelector('.delete-btn');
+
+        cb.addEventListener('change', function() {
+          const item = items.find(i => i.id === id);
+          if (item) {
+            item.bought = this.checked;
+            // При покупке цена сохраняется
+            const priceVal = parseFloat(priceInput.value);
+            if (!isNaN(priceVal) && priceVal >= 0) item.price = priceVal;
+            // Перемещение в конец автоматически через сортировку + класс bought
+            renderAll();
+          }
+        });
+
+        priceInput.addEventListener('change', function() {
+          const item = items.find(i => i.id === id);
+          if (item) {
+            const val = parseFloat(this.value);
+            if (!isNaN(val) && val >= 0) item.price = val;
+            updateStats();
+          }
+        });
+
+        delBtn.addEventListener('click', function() {
+          if (confirm('Удалить товар?')) {
+            items = items.filter(i => i.id !== id);
+            renderAll();
+          }
+        });
+      });
+
+      updateStats();
+    }
+
+    // ---- Обновить статистику ----
+    function updateStats() {
+      const total = items.length;
+      const bought = items.filter(i => i.bought).length;
+      const remain = total - bought;
+      const totalPrice = items.reduce((acc, i) => acc + (i.bought ? (i.price || 0) : 0), 0);
+      statsTotal.textContent = total;
+      statsBought.textContent = bought;
+      statsRemain.textContent = remain;
+      statsPrice.textContent = totalPrice.toFixed(2);
+    }
+
+    // ---- Рендер архива ----
+    function renderArchive() {
+      if (archiveData.length === 0) {
+        archiveContent.innerHTML = `<div style="padding:20px; text-align:center; opacity:0.6;">Архив пуст</div>`;
+        return;
+      }
+
+      // группировка по дате (строка)
+      const groups = {};
+      archiveData.forEach(entry => {
+        const key = entry.date || new Date(entry.archivedAt).toLocaleDateString();
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(entry);
+      });
+
+      let html = '';
+      let monthTotal = 0;
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+
+      Object.keys(groups).forEach(dateKey => {
+        const entries = groups[dateKey];
+        const sum = entries.reduce((acc, e) => acc + (e.price || 0), 0);
+        html += `<div class="archive-group"><div class="archive-date">📅 ${dateKey}</div>`;
+        entries.forEach(e => {
+          html += `<div class="archive-item"><span>${e.name} (${e.qty})</span><span>${e.price ? e.price.toFixed(2) : '0'} ₽</span></div>`;
+        });
+        html += `<div class="month-total">Итого за день: ${sum.toFixed(2)} ₽</div></div>`;
+        // для месяца
+        const d = new Date(dateKey);
+        if (!isNaN(d) && d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+          monthTotal += sum;
+        }
+      });
+
+      html += `<div style="margin-top:20px; font-weight:600; background: #8b5cf6; color:white; padding:12px 24px; border-radius:60px; display:inline-block;">Общая сумма за месяц: ${monthTotal.toFixed(2)} ₽</div>`;
+      archiveContent.innerHTML = html;
+    }
+
+    // ---- Полный рендер ----
+    function renderAll() {
+      renderItems();
+      renderArchive();
+    }
+
+    // ---- Добавление товара ----
+    function addItem(e) {
+      e.preventDefault();
+      const name = nameInput.value.trim();
+      const qty = qtyInput.value.trim() || '1';
+      const category = catInput.value.trim() || 'Основное';
+      if (!name) {
+        alert('Введите название товара');
+        return;
+      }
+      const newItem = {
+        id: Date.now() + Math.random().toString(36),
+        name,
+        qty,
+        category,
+        bought: false,
+        price: 0,
+        createdAt: Date.now()
+      };
+      items.push(newItem);
+      nameInput.value = '';
+      qtyInput.value = '1';
+      catInput.value = 'Основное';
+      renderAll();
+    }
+
+    // ---- Архивация купленных ----
+    function archiveBought() {
+      const boughtItems = items.filter(i => i.bought);
+      if (boughtItems.length === 0) {
+        alert('Нет купленных товаров для архивации.');
+        return;
+      }
+      const now = new Date();
+      const dateStr = now.toLocaleDateString();
+      const timeStr = now.toLocaleTimeString();
+      boughtItems.forEach(item => {
+        archiveData.push({
+          id: 'arch_' + Date.now() + Math.random(),
+          name: item.name,
+          qty: item.qty,
+          price: item.price || 0,
+          archivedAt: Date.now(),
+          date: dateStr + ' ' + timeStr,
+        });
+      });
+      // удаляем купленные из активных
+      items = items.filter(i => !i.bought);
+      renderAll();
+      alert(`Архивировано ${boughtItems.length} товаров.`);
+    }
+
+    // ---- Переключение страниц ----
+    function showActive() {
+      activePage.classList.add('page-active');
+      activePage.classList.remove('page-hidden');
+      archivePage.classList.remove('page-active');
+      archivePage.style.display = 'none';
+    }
+    function showArchive() {
+      activePage.classList.remove('page-active');
+      archivePage.style.display = 'block';
+      archivePage.classList.add('page-active');
+      renderArchive();
+    }
+
+    // ---- Инициализация событий ----
+    function initEvents() {
+      addForm.addEventListener('submit', addItem);
+
+      document.getElementById('archiveBtn').addEventListener('click', archiveBought);
+      document.getElementById('gotoArchiveBtn').addEventListener('click', showArchive);
+      document.getElementById('backToActive').addEventListener('click', showActive);
+
+      // поиск
+      searchInput.addEventListener('input', function() {
+        searchQuery = this.value;
+        renderItems();
+      });
+
+      // фильтры
+      filterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+          filterBtns.forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          currentFilter = this.dataset.filter;
+          renderItems();
+        });
+      });
+
+      // сортировка
+      document.getElementById('sortName').addEventListener('click', () => { sortMode = 'name'; renderItems(); });
+      document.getElementById('sortPrice').addEventListener('click', () => { sortMode = 'price'; renderItems(); });
+      document.getElementById('sortDate').addEventListener('click', () => { sortMode = 'date'; renderItems(); });
+
+      // тема
+      themeToggle.addEventListener('click', function() {
+        document.body.classList.toggle('dark');
+        const isDark = document.body.classList.contains('dark');
+        themeLabel.textContent = isDark ? 'Светлая' : 'Тёмная';
+        themeToggle.querySelector('i').className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+      });
+    }
+
+    // ---- Запуск ----
+    initMockData();
+    initEvents();
+    showActive();
+  })();
+</script>
+
+<!-- Google Apps Script (внедрение) -->
+<script>
+  // Этот скрипт будет взаимодействовать с Google Таблицей.
+  // Для полноценной работы необходимо развернуть как веб-приложение и заменить URL.
+  // Ниже представлен код для связи с таблицей (скрипт .gs)
+  /*
+  function doGet() {
+    return HtmlService.createHtmlOutputFromFile('index');
+  }
+
+  // Получить все покупки
+  function getItems() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('Покупки');
+    if (!sheet) return [];
+    const data = sheet.getDataRange().getValues();
+    const headers = data.shift();
+    return data.map(row => ({
+      id: row[0] || '',
+      name: row[1] || '',
+      qty: row[2] || '',
+      bought: row[3] === true || row[3] === 'TRUE',
+      price: parseFloat(row[4]) || 0,
+      createdAt: row[5] ? new Date(row[5]).getTime() : Date.now(),
+      category: row[6] || ''
+    }));
+  }
+
+  // Добавить товар
+  function addItem(item) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('Покупки');
+    if (!sheet) return;
+    sheet.appendRow([
+      item.id,
+      item.name,
+      item.qty,
+      item.bought,
+      item.price || 0,
+      new Date(item.createdAt),
+      item.category || ''
+    ]);
+  }
+
+  // Обновить товар (статус, цена)
+  function updateItem(item) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('Покупки');
+    if (!sheet) return;
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === item.id) {
+        sheet.getRange(i+1, 4).setValue(item.bought);
+        sheet.getRange(i+1, 5).setValue(item.price || 0);
+        break;
+      }
+    }
+  }
+
+  // Удалить товар
+  function deleteItem(id) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('Покупки');
+    if (!sheet) return;
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === id) {
+        sheet.deleteRow(i+1);
+        break;
+      }
+    }
+  }
+
+  // Архивировать (перенос в Архив)
+  function archiveItems(ids) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('Покупки');
+    const archiveSheet = ss.getSheetByName('Архив');
+    if (!sheet || !archiveSheet) return;
+    const data = sheet.getDataRange().getValues();
+    const rowsToDelete = [];
+    for (let i = 1; i < data.length; i++) {
+      if (ids.includes(data[i][0])) {
+        archiveSheet.appendRow([
+          new Date(),
+          data[i][1], // name
+          data[i][2], // qty
+          data[i][4] || 0, // price
+          data[i][4] || 0  // total
+        ]);
+        rowsToDelete.push(i+1);
+      }
+    }
+    // удаляем строки (с конца)
+    rowsToDelete.sort((a,b) => b - a);
+    rowsToDelete.forEach(row => sheet.deleteRow(row));
+  }
+  */
+  console.log('Google Apps Script интеграция готова (замените URL и вызовите функции)');
+</script>
+</body>
+</html>
